@@ -15,8 +15,7 @@
 # limitations under the License
 
 # THE DEFAULT BOOT SEQUENCE IS NOW entrypoint.go. HOWEVER, we'll stick
-# with entrypoint.sh when the --dev-magic parameter is present. This
-# is currently used only for test_scout.py.  This is a BRUTAL HACK.
+# with entrypoint.sh when the --dev-magic parameter is present.
 
 if [ "$1" != "--dev-magic" ]; then
   exec busyambassador entrypoint "$@"   # See comment above.

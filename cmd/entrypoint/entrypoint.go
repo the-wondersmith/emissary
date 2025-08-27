@@ -214,7 +214,7 @@ func clusterIDFromRootID(rootID string) string {
 }
 
 func GetClusterID(ctx context.Context) (clusterID string) {
-	clusterID = env("AMBASSADOR_CLUSTER_ID", env("AMBASSADOR_SCOUT_ID", ""))
+	clusterID = env("AMBASSADOR_CLUSTER_ID", "")
 	if clusterID != "" {
 		return clusterID
 	}

@@ -219,9 +219,7 @@ def mod_startswith(modname: str, prefix: str) -> bool:
     return (modname == prefix) or modname.startswith(prefix+'.')
 
 def import_to_distribname(item: ImportedItem) -> str:
-    if mod_startswith(item.module, 'scout'):
-        return 'scout.py'
-    elif mod_startswith(item.module, 'yaml'):
+    if mod_startswith(item.module, 'yaml'):
         return 'pyyaml'
     elif mod_startswith(item.module, 'pkg_resources'):
         return 'setuptools'
