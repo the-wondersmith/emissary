@@ -61,8 +61,7 @@ from prometheus_client import (
 from pythonjsonlogger import jsonlogger
 from typing import NotRequired, TypedDict
 
-from ambassador import IR, Cache, Config, Diagnostics, EnvoyConfig, Scout, Version
-from ambassador.ambscout import LocalScout
+from ambassador import IR, Cache, Config, Diagnostics, EnvoyConfig, Version
 from ambassador.constants import Constants
 from ambassador.diagnostics import EnvoyStats, EnvoyStatsMgr
 from ambassador.fetch import ResourceFetcher
@@ -173,10 +172,8 @@ class DiagApp(Flask):
     # self.diag is actually a property
     _diag: Optional[Diagnostics]
     notices: "Notices"
-    scout: Scout
     watcher: "AmbassadorEventWatcher"
     stats_updater: Optional[PeriodicTrigger]
-    scout_checker: Optional[PeriodicTrigger]
     timer_logger: Optional[PeriodicTrigger]
     last_request_info: Dict[str, int]
     last_request_time: Optional[datetime.datetime]
@@ -214,7 +211,7 @@ class DiagApp(Flask):
         notices=None,
         validation_retries=5,
         allow_fs_commands=False,
-        local_scout=False,
+
         report_action_keys=False,
         enable_fast_reconfigure=False,
         clustermap_path=None,
@@ -229,7 +226,6 @@ class DiagApp(Flask):
         self.k8s = k8s
         self.validation_retries = validation_retries
         self.allow_fs_commands = allow_fs_commands
-        self.local_scout = local_scout
         self.report_action_keys = report_action_keys
         self.banner_endpoint = banner_endpoint
         self.metrics_endpoint = metrics_endpoint
@@ -332,13 +328,9 @@ class DiagApp(Flask):
             self.diag = None  # don't update unless you hold config_lock
 
         self.stats_updater = None
-        self.scout_checker = None
 
         self.last_request_info = {}
         self.last_request_time = None
-
-        # self.scout = Scout(update_frequency=datetime.timedelta(seconds=10))
-        self.scout = Scout(local_only=self.local_scout)
 
         ProcessCollector(namespace="ambassador", registry=self.metrics_registry)
         metrics_info = Info(
@@ -351,10 +343,7 @@ class DiagApp(Flask):
             {
                 "version": __version__,
                 "ambassador_id": Config.ambassador_id,
-                "cluster_id": os.environ.get(
-                    "AMBASSADOR_CLUSTER_ID",
-                    os.environ.get("AMBASSADOR_SCOUT_ID", "00000000-0000-0000-0000-000000000000"),
-                ),
+                "cluster_id": os.environ.get("AMBASSADOR_CLUSTER_ID", "00000000-0000-0000-0000-000000000000"),
                 "single_namespace": str(Config.single_namespace),
             }
         )
@@ -453,9 +442,6 @@ class DiagApp(Flask):
             self.reconf_stats.mark("diag")
 
             return _diag
-
-    def check_scout(self, what: str) -> None:
-        self.watcher.post("SCOUT", (what, self.ir))
 
     def post_timer_event(self) -> None:
         # Post an event to do a timer check.
@@ -838,10 +824,7 @@ def system_info(app):
         "knative_enabled": os.environ.get("AMBASSADOR_KNATIVE_SUPPORT", "").lower() == "true",
         "statsd_enabled": os.environ.get("STATSD_ENABLED", "").lower() == "true",
         "endpoints_enabled": Config.enable_endpoints,
-        "cluster_id": os.environ.get(
-            "AMBASSADOR_CLUSTER_ID",
-            os.environ.get("AMBASSADOR_SCOUT_ID", "00000000-0000-0000-0000-000000000000"),
-        ),
+        "cluster_id": os.environ.get("AMBASSADOR_CLUSTER_ID", "00000000-0000-0000-0000-000000000000"),
         "boot_time": boot_time,
         "hr_uptime": td_format(datetime.datetime.now() - boot_time),
         "latest_snapshot": app.latest_snapshot,
@@ -963,20 +946,7 @@ def handle_fs():
     return info, status
 
 
-@app.route("/_internal/v0/events", methods=["GET"])
-@internal_handler
-def handle_events():
-    if not app.local_scout:
-        return "Local Scout is not enabled\n", 400
-    assert isinstance(app.scout._scout, LocalScout)
 
-    event_dump = [
-        (x["local_scout_timestamp"], x["mode"], x["action"], x) for x in app.scout._scout.events
-    ]
-
-    app.logger.debug(f"Event dump {event_dump}")
-
-    return jsonify(event_dump)
 
 
 @app.route("/ambassador/v0/favicon.ico", methods=["GET"])
@@ -1096,7 +1066,7 @@ def show_overview(reqid=None):
         else:
             return jsonify(tvars)
     else:
-        app.check_scout("overview")
+    
         return Response(render_template("overview.html", **tvars))
 
 
@@ -1204,7 +1174,7 @@ def show_intermediate(source=None, reqid=None):
         else:
             return jsonify(tvars)
     else:
-        app.check_scout("detail: %s" % source)
+    
         return Response(render_template("diag.html", **tvars))
 
 
@@ -1454,10 +1424,7 @@ class AmbassadorEventWatcher(threading.Thread):
         self.app.estatsmgr.update()
 
     def run(self):
-        self.logger.info("starting Scout checker and timer logger")
-        self.app.scout_checker = PeriodicTrigger(
-            lambda: self.check_scout("checkin"), period=86400
-        )  # Yup, one day.
+        self.logger.info("starting timer logger")
         self.app.timer_logger = PeriodicTrigger(self.app.post_timer_event, period=1)
 
         self.logger.info("starting event watcher")
@@ -1485,14 +1452,7 @@ class AmbassadorEventWatcher(threading.Thread):
                     self.logger.error("could not reconfigure: %s" % e)
                     self.logger.exception(e)
                     self._respond(rqueue, 500, "configuration failed")
-            elif cmd == "SCOUT":
-                try:
-                    self._respond(rqueue, 200, "checking Scout")
-                    self.check_scout(*arg)
-                except Exception as e:
-                    self.logger.error("could not reconfigure: %s" % e)
-                    self.logger.exception(e)
-                    self._respond(rqueue, 500, "scout check failed")
+
             elif cmd == "TIMER":
                 try:
                     self._respond(rqueue, 200, "done")
@@ -1539,16 +1499,8 @@ class AmbassadorEventWatcher(threading.Thread):
                     self.last_chime = False
                     self.env_good = False
 
-                    self.app.scout.reset_events()
-                    self.app.scout.report(mode="boot", action="boot1", no_cache=True)
-
                     self.logger.info("CMD: Reset chime state")
                     self._respond(rqueue, 200, "CMD: Reset chime state")
-                elif cmd.upper() == "SCOUT_CACHE_RESET":
-                    self.app.scout.reset_cache_time()
-
-                    self.logger.info("CMD: Reset Scout cache time")
-                    self._respond(rqueue, 200, "CMD: Reset Scout cache time")
                 elif cmd.upper() == "ENV_OK":
                     self.env_good = True
                     self.failure_list = []
@@ -1725,8 +1677,7 @@ class AmbassadorEventWatcher(threading.Thread):
                 % econf_bad_reason
             )
 
-            # Don't use app.check_scout; it will deadlock.
-            self.check_scout("attempted bad update")
+            
 
             # DO stop the reconfiguration timer before leaving.
             self.app.config_timer.stop()
@@ -1877,9 +1828,8 @@ class AmbassadorEventWatcher(threading.Thread):
         self.chime()
 
     def chime(self):
-        # In general, our reports here should be action "update", and they should honor the
-        # Scout cache, but we need to tweak that depending on whether we've done this before
-        # and on whether the environment looks OK.
+        # In general, our reports here should be action "update", but we need to tweak that 
+        # depending on whether we've done this before and on whether the environment looks OK.
 
         already_chimed = bool_fmt(self.chimed)
         was_ok = bool_fmt(self.last_chime)
@@ -1902,8 +1852,7 @@ class AmbassadorEventWatcher(threading.Thread):
         if self.app.report_action_keys:
             chime_args["action_key"] = action_key
 
-        # Don't use app.check_scout; it will deadlock.
-        self.check_scout(action, **chime_args)
+
 
         # Remember that we have now chimed...
         self.chimed = True
@@ -2011,103 +1960,8 @@ class AmbassadorEventWatcher(threading.Thread):
         self.env_status = env_status
         self.failure_list = failure_list
 
-    def check_scout(
-        self,
-        what: str,
-        no_cache: Optional[bool] = False,
-        ir: Optional[IR] = None,
-        failures: Optional[List[str]] = None,
-        action_key: Optional[str] = None,
-    ) -> None:
-        now = datetime.datetime.now()
-        uptime = now - boot_time
-        hr_uptime = td_format(uptime)
 
-        if not ir:
-            ir = app.ir
 
-        self.app.notices.reset()
-
-        scout_args = {"uptime": int(uptime.total_seconds()), "hr_uptime": hr_uptime}
-
-        if failures:
-            scout_args["failures"] = failures
-
-        if action_key:
-            scout_args["action_key"] = action_key
-
-        if ir:
-            self.app.logger.debug("check_scout: we have an IR")
-
-            if not os.environ.get("AMBASSADOR_DISABLE_FEATURES", None):
-                self.app.logger.debug("check_scout: including features")
-                feat = ir.features()
-
-                # Include features about the cache and incremental reconfiguration,
-                # too.
-
-                if self.app.cache is not None:
-                    # Fast reconfigure is on. Supply the real info.
-                    feat["frc_enabled"] = True
-                    feat["frc_cache_hits"] = self.app.cache.hits
-                    feat["frc_cache_misses"] = self.app.cache.misses
-                    feat["frc_inv_calls"] = self.app.cache.invalidate_calls
-                    feat["frc_inv_objects"] = self.app.cache.invalidated_objects
-                else:
-                    # Fast reconfigure is off.
-                    feat["frc_enabled"] = False
-
-                # Whether the cache is on or off, we can talk about reconfigurations.
-                feat["frc_incr_count"] = self.app.reconf_stats.counts["incremental"]
-                feat["frc_complete_count"] = self.app.reconf_stats.counts["complete"]
-                feat["frc_check_count"] = self.app.reconf_stats.checks
-                feat["frc_check_errors"] = self.app.reconf_stats.errors
-
-                request_data = app.estatsmgr.get_stats().requests
-
-                if request_data:
-                    self.app.logger.debug("check_scout: including requests")
-
-                    for rkey in request_data.keys():
-                        cur = request_data[rkey]
-                        prev = app.last_request_info.get(rkey, 0)
-                        feat[f"request_{rkey}_count"] = max(cur - prev, 0)
-
-                    lrt = app.last_request_time or boot_time
-                    since_lrt = now - lrt
-                    elapsed = since_lrt.total_seconds()
-                    hr_elapsed = td_format(since_lrt)
-
-                    app.last_request_time = now
-                    app.last_request_info = request_data
-
-                    feat["request_elapsed"] = elapsed
-                    feat["request_hr_elapsed"] = hr_elapsed
-
-                scout_args["features"] = feat
-
-        scout_result = self.app.scout.report(
-            mode="diagd", action=what, no_cache=no_cache, **scout_args
-        )
-        scout_notices = scout_result.pop("notices", [])
-
-        global_loglevel = self.app.logger.getEffectiveLevel()
-
-        self.app.logger.debug(f"Scout section: global loglevel {global_loglevel}")
-
-        for notice in scout_notices:
-            notice_level_name = notice.get("level") or "INFO"
-            notice_level = logging.getLevelName(notice_level_name)
-
-            if notice_level >= global_loglevel:
-                self.app.logger.debug(f"Scout section: include {notice}")
-                self.app.notices.post(notice)
-            else:
-                self.app.logger.debug(f"Scout section: skip {notice}")
-
-        self.app.logger.debug("Scout reports %s" % dump_json(scout_result))
-        self.app.logger.debug("Scout notices: %s" % dump_json(scout_notices))
-        self.app.logger.debug("App notices after scout: %s" % dump_json(app.notices.notices))
 
     def validate_envoy_config(self, ir: IR, config, retries) -> bool:
         if self.app.no_envoy:
@@ -2270,8 +2124,6 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
 
         # Boot chime. This is basically the earliest point at which we can consider an Ambassador
         # to be "running".
-        scout_result = self.application.scout.report(mode="boot", action="boot1", no_cache=True)
-        self.application.logger.debug(f"BOOT: Scout result {dump_json(scout_result)}")
         self.application.logger.info(f"Ambassador {__version__} booted")
 
     def load_config(self):
@@ -2367,11 +2219,7 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
     is_flag=True,
     help="If true, allow CONFIG_FS to support debug/testing commands",
 )
-@click.option(
-    "--local-scout",
-    is_flag=True,
-    help="Don't talk to remote Scout at all; keep everything purely local",
-)
+
 @click.option("--report-action-keys", is_flag=True, help="Report action keys when chiming")
 def main(
     snapshot_path=None,
@@ -2396,7 +2244,6 @@ def main(
     notices=None,
     validation_retries=5,
     allow_fs_commands=False,
-    local_scout=False,
     report_action_keys=False,
 ):
     """
@@ -2425,9 +2272,6 @@ def main(
 
     if dev_magic:
         # Override the world.
-        os.environ["SCOUT_HOST"] = "127.0.0.1:9999"
-        os.environ["SCOUT_HTTPS"] = "no"
-
         no_checks = True
         no_envoy = True
 
@@ -2440,7 +2284,6 @@ def main(
         port = 9998
 
         allow_fs_commands = True
-        local_scout = True
         report_action_keys = True
 
     if no_envoy:
@@ -2465,7 +2308,6 @@ def main(
         notices,
         validation_retries,
         allow_fs_commands,
-        local_scout,
         report_action_keys,
         enable_fast_reconfigure,
     )

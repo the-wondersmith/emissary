@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .ambscout import AmbScout as Scout
-from .ambscout import ScoutNotice
 from .cache import Cache
 from .config import Config
 from .diagnostics import Diagnostics
@@ -26,10 +24,8 @@ __all__ = (
     "IR",
     "Cache",
     "Config",
-    "Scout",
     "Commit",
     "Version",
     "EnvoyConfig",
     "Diagnostics",
-    "ScoutNotice",
 )

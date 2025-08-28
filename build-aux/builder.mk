@@ -318,8 +318,7 @@ else
 	@printf '  pushing $(CYN)https://s3.amazonaws.com/$(AWS_S3_BUCKET)/emissary-ingress/$(PROMOTE_CHANNEL)stable.txt$(END)...\n'
 	printf '%s' "$(patsubst v%,%,$(PROMOTE_TO_VERSION))" | aws s3 cp - s3://$(AWS_S3_BUCKET)/emissary-ingress/$(PROMOTE_CHANNEL)stable.txt
 
-	@printf '  pushing $(CYN)s3://scout-datawire-io/emissary-ingress/$(PROMOTE_CHANNEL)app.json$(END)...\n'
-	printf '{"application":"emissary","latest_version":"%s","notices":[]}' "$(patsubst v%,%,$(PROMOTE_TO_VERSION))" | aws s3 cp - s3://scout-datawire-io/emissary-ingress/$(PROMOTE_CHANNEL)app.json
+
 
 	{ $(MAKE) \
 	  push-manifests \

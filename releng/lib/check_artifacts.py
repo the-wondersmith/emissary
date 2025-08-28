@@ -123,14 +123,7 @@ def main(ga_ver: str, chart_ver: str, include_docker: bool = True,
                         assert subcheck.result != ga_ver
                     else:
                         assert_eq(subcheck.result, ga_ver)
-            with do_check_s3(checker, name=f'emissary-ingress/{release_channel}app.json', bucket='scout-datawire-io',
-                             private=True) as (subcheck, body):
-                if body is not None:
-                    subcheck.result = json.loads(body.decode('UTF-8')).get('latest_version', '')
-                    if is_private:
-                        assert subcheck.result != ga_ver
-                    else:
-                        assert_eq(subcheck.result, ga_ver)
+
 
     with checker.check(name='Website YAML') as check:
         yaml_str = http_cat('https://app.getambassador.io/yaml/emissary/latest/emissary-emissaryns.yaml').decode('utf-8')
