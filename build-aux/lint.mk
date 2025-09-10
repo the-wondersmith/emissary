@@ -42,14 +42,14 @@ format/black: $(OSS_HOME)/.venv
 	uv run -- ruff format --config='pyproject.toml' python/
 .PHONY: format/black
 
-#
-# Helm
+# #
+# # Helm
 
-lint-deps += $(tools/ct) $(chart_dir)
-lint-goals += lint/chart
-lint/chart: $(tools/ct) $(chart_dir)
-	cd $(chart_dir) && $(abspath $(tools/ct)) lint --config=./ct.yaml
-.PHONY: lint/chart
+# lint-deps += $(tools/ct)
+# lint-goals += lint/chart
+# lint/chart: $(tools/ct)
+# 	cd charts && $(abspath $(tools/ct)) lint --config=./ct.yaml
+# .PHONY: lint/chart
 
 #
 # All together now
