@@ -3,8 +3,13 @@ CHART_DIR ?= $(OSS_HOME)/charts
 BUILD_CHART ?= $(OSS_HOME)/tools/src/build-chart
 
 CRDS_CHART = $(CHART_DIR)/emissary-crds-chart-$(VERSION).tgz
+EMISSARY_CHART = $(CHART_DIR)/emissary-ingress-$(VERSION).tgz
 
-all: chart
+charts: emissary-crds-chart emissary-ingress
+
+# These are just aliases
+emissary-crds-chart: $(CRDS_CHART)
+emissary-ingress: $(EMISSARY_CHART)
 
 version-check:
 	@if [ -z "$(VERSION)" ]; then \
@@ -24,16 +29,18 @@ $(CRDS_CHART): version-check $(CHART_DIR)/emissary-crds
 	( cd $(CHART_DIR) && bash $(BUILD_CHART) emissary-crds $(VERSION) $(IMAGE_REPO) $(CHART_DIR) )
 	ls -l $(CRDS_CHART)
 
-push-chart: version-check helm-registry-check $(CRDS_CHART)
+$(EMISSARY_CHART): version-check $(CHART_DIR)/emissary-ingress
+	( cd $(CHART_DIR) && bash $(BUILD_CHART) emissary-ingress $(VERSION) $(IMAGE_REPO) $(CHART_DIR) )
+	ls -l $(EMISSARY_CHART)
+
+push-chart: version-check helm-registry-check
 	if [ -n "$(HELM_REGISTRY)" ]; then \
 		helm push $(CRDS_CHART) $(HELM_REGISTRY); \
+		helm push $(EMISSARY_CHART) $(HELM_REGISTRY); \
 	else \
 		echo "HELM_REGISTRY not set, not pushing"; \
 	fi
 
-# This is just an alias
-chart: $(CRDS_CHART)
-
 clean:
 	rm -rf $(CHART_DIR)/emissary-crds-chart-*
-
+	rm -rf $(CHART_DIR)/emissary-ingress-*
