@@ -1,5 +1,6 @@
 IMAGE_REPO ?= ghcr.io/emissary-ingress/emissary
 CHART_DIR ?= $(OSS_HOME)/charts
+BUILD_CHART ?= $(OSS_HOME)/tools/src/build-chart
 
 CRDS_CHART = $(CHART_DIR)/emissary-crds-chart-$(VERSION).tgz
 
@@ -20,12 +21,8 @@ helm-registry-check:
 .PHONY: helm-registry-check
 
 $(CRDS_CHART): version-check $(CHART_DIR)/emissary-crds
-	rm -rf $(CRDS_CHART)
-	cp -pr $(CHART_DIR)/emissary-crds $(CHART_DIR)/emissary-crds-chart-$(VERSION)
-	sed -e "s/%VERSION%/$(VERSION)/" \
-		< $(CHART_DIR)/emissary-crds-chart-$(VERSION)/Chart.yaml > $(CHART_DIR)/emissary-crds-chart-$(VERSION)/Chart-fixed.yaml
-	mv $(CHART_DIR)/emissary-crds-chart-$(VERSION)/Chart-fixed.yaml $(CHART_DIR)/emissary-crds-chart-$(VERSION)/Chart.yaml
-	helm package ./$(CHART_DIR)/emissary-crds-chart-$(VERSION)
+	( cd $(CHART_DIR) && bash $(BUILD_CHART) emissary-crds $(VERSION) $(IMAGE_REPO) $(CHART_DIR) )
+	ls -l $(CRDS_CHART)
 
 push-chart: version-check helm-registry-check $(CRDS_CHART)
 	if [ -n "$(HELM_REGISTRY)" ]; then \
