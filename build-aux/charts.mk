@@ -42,5 +42,4 @@ push-chart: version-check helm-registry-check
 	fi
 
 clean:
-	rm -rf $(CHART_DIR)/emissary-crds-chart-*
-	rm -rf $(CHART_DIR)/emissary-ingress-*
+	rm -rf $(CHART_DIR)/*.tgz
