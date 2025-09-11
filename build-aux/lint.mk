@@ -45,11 +45,11 @@ format/black: $(OSS_HOME)/.venv
 #
 # Helm
 
-lint-deps += $(tools/ct) $(chart_dir)
-lint-goals += lint/chart
-lint/chart: $(tools/ct) $(chart_dir)
-	cd $(chart_dir) && $(abspath $(tools/ct)) lint --config=./ct.yaml
-.PHONY: lint/chart
+lint-deps += $(tools/ct)
+lint-goals += lint/charts
+lint/charts: $(tools/ct)
+	cd charts && $(abspath $(tools/ct)) lint --config=./ct.yaml
+.PHONY: lint/charts
 
 #
 # All together now

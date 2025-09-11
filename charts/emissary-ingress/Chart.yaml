@@ -1,5 +1,6 @@
 apiVersion: "v2"
-appVersion: @version@
+version: "0.0.0-dev"     # Placeholder
+appVersion: "0.0.0-dev"  # Placeholder
 description: |
   Emissary-ingress is a CNCF API Gateway built on Envoy Proxy, specializing
   in self-service operation with minimal operational complexity. This is the
@@ -13,11 +14,10 @@ keywords:
 - ingress-controller
 - envoy
 kubeVersion: ">=1.25.0-0"
-name: emissary-chart
+name: emissary-ingress
 sources:
 - https://github.com/emissary-ingress/emissary
-version: @chartVersion@
-icon: https://www.getambassador.io/images/logo.png
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/emissary-ingress/icon/black/emissary-ingress-icon-black.svg
 maintainers:
 - name: Emissary authors
   email: cncf-emissary-ingress-maintainers@lists.cncf.io

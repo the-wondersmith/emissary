@@ -27,53 +27,6 @@ include build-aux/var.mk
 %: %.stamp $(tools/copy-ifchanged)
 	@$(tools/copy-ifchanged) $< $@
 
-# The Helm chart
-build-output/chart-%.d: \
-  $(shell find charts/emissary-ingress) \
-  $(var.)DEV_REGISTRY $(var.)RELEASE_REGISTRY \
-  $(tools/chart-doc-gen)
-ifeq ($(CI),)
-	rm -rf $@
-else
-	@if test -d $@; then \
-	  echo 'This should not happen in CI: $@ should not need to change' >&2; \
-	  echo 'Files triggering the change are: $?' >&2; \
-	  exit 1; \
-	fi
-endif
-	mkdir -p $(@D)
-	cp -a $< $@
-	@PS4=; set -ex -o pipefail; { \
-	  if [[ '$(word 1,$(subst _, ,$*))' =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+|-ea)?$$ ]]; then \
-	    registry=$(RELEASE_REGISTRY); \
-	  else \
-	    registry=$(DEV_REGISTRY); \
-	  fi; \
-	  for file in Chart.yaml values.yaml; do \
-	    sed \
-	      -e 's/@version@/$(word 1,$(subst _, ,$*))/g' \
-	      -e 's/@chartVersion@/$(word 2,$(subst _, ,$*))/g' \
-	      -e "s,@imageRepo@,$${registry}/emissary,g" \
-	      <'$<'/"$${file}.in" \
-	      >'$@'/"$${file}"; \
-	  done; \
-	}
-	$(tools/chart-doc-gen) -d $</doc.yaml -t $</readme.tpl -v $@/values.yaml >$@/README.md
-build-output/chart-%.tgz: build-output/chart-%.d
-	helm package --destination=$< $<
-	mv $</emissary-chart-$(word 2,$(subst _, ,$*)).tgz $@
-
-# Convenience aliases for the Helm chart
-chart_dir = build-output/chart-$(patsubst v%,%,$(VERSION))_$(patsubst v%,%,$(CHART_VERSION)).d
-chart_tgz = $(patsubst %.d,%.tgz,$(chart_dir))
-chart: $(chart_tgz)
-PHONY: chart
-
-_major_version = $(firstword $(subst ., ,$(patsubst v%,%,$(VERSION))))
-_chart_major_version = $(firstword $(subst ., ,$(patsubst v%,%,$(CHART_VERSION))))
-boguschart_dir = build-output/chart-$(_major_version).0.0-bogus_$(_chart_major_version).0.0-bogus.d
-boguschart_tgz = $(patsubst %.d,%.tgz,$(boguschart_dir))
-
 # YAML manifests
 build-output/yaml-%: $(shell find $(CURDIR)/manifests/emissary -type d -o -name '*.yaml.in') $(var.)DEV_REGISTRY $(var.)RELEASE_REGISTRY
 ifeq ($(CI),)

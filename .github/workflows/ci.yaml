@@ -41,6 +41,12 @@ jobs:
     with:
       ref: ${{ github.ref }}
 
+  build-charts:
+    name: Build Charts
+    uses: ./.github/workflows/charts.yaml
+    with:
+      ref: ${{ github.ref }}
+
   build-images:
     name: Build Images
     uses: ./.github/workflows/build-images.yaml

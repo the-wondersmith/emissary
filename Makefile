@@ -73,6 +73,7 @@ EMISSARY_NAME ?= emissary
 _git_remote_urls := $(shell git remote | xargs -n1 git remote get-url --all)
 IS_PRIVATE ?= $(findstring 'private',$(_git_remote_urls))
 
+include $(OSS_HOME)/build-aux/charts.mk
 include $(OSS_HOME)/build-aux/ci.mk
 include $(OSS_HOME)/build-aux/deps.mk
 include $(OSS_HOME)/build-aux/main.mk
