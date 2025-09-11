@@ -15,7 +15,7 @@ kubeVersion: ">=1.25.0-0"
 name: "emissary-crds-chart"
 sources:
 - https://github.com/emissary-ingress/emissary/
-# icon: https://linkerd.io/images/logo-only-200h.png
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/emissary-ingress/icon/black/emissary-ingress-icon-black.svg
 maintainers:
   - name: Emissary authors
     email: cncf-emissary-ingress-maintainers@lists.cncf.io

@@ -17,7 +17,7 @@ kubeVersion: ">=1.25.0-0"
 name: emissary-ingress
 sources:
 - https://github.com/emissary-ingress/emissary
-icon: https://www.getambassador.io/images/logo.png
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/emissary-ingress/icon/black/emissary-ingress-icon-black.svg
 maintainers:
 - name: Emissary authors
   email: cncf-emissary-ingress-maintainers@lists.cncf.io
