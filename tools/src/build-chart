@@ -31,19 +31,13 @@ trap "rm -rf $workdir" EXIT
 
 cp -pr "$chart_source"/* "$workdir"
 
-for file in "$workdir/Chart.yaml" "$workdir/values.yaml"; do
-	sed \
-		-e "s/@version@/$version/g" \
-		-e "s/@chartVersion@/$version/g" \
-		-e "s,@imageRepo@,${image_repo},g" \
-		< ${file}.in > ${file}
-	rm -f ${file}.in
-done
-
 go run kubepack.dev/chart-doc-gen@v0.5.0 \
 	-d "$workdir/doc.yaml" \
 	-t "$workdir/readme.tpl" \
 	-v "$workdir/values.yaml" \
 	> $workdir/README.md
 
-helm package --destination="$output_dir" "$workdir"
+helm package \
+  --app-version="$version" \
+  --version="$version" \
+  --destination="$output_dir" "$workdir"

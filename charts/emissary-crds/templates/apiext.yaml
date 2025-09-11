@@ -176,7 +176,7 @@ spec:
       serviceAccountName: emissary-apiext
       containers:
         - name: emissary-apiext
-          image: {{ .Values.apiext.repository }}:{{ .Values.apiext.tag }}
+          image: {{ .Values.apiext.repository | default .Values.defaultImageRepository }}:{{ .Values.apiext.tag | default .Chart.AppVersion }}
           imagePullPolicy: {{ .Values.apiext.pullPolicy }}
           command: [ "apiext", "emissary-apiext" ]
           ports:

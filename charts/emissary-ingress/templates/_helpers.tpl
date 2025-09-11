@@ -55,10 +55,10 @@ Then if the image repository is explicitly set, use "repository:image"
 {{- define "ambassador.image" -}}
 {{- if .Values.image.fullImageOverride }}
 {{- .Values.image.fullImageOverride }}
-{{- else if hasKey .Values.image "repository"  -}}
-{{- printf "%s:%s" .Values.image.repository .Values.image.tag -}}
 {{- else -}}
-{{- printf "%s:%s" "docker.io/emissaryingress/emissary" .Values.image.tag -}}
+{{- $repo := ( .Values.image.repository | default .Values.defaultImageRepository ) -}}
+{{- $tag := ( .Values.image.tag | default .Chart.AppVersion ) -}}
+{{- printf "%s:%s" $repo $tag -}}
 {{- end -}}
 {{- end -}}
 
@@ -71,17 +71,12 @@ disabled if fullImageOverride is present
 {{- printf "%s" "" -}}
 {{- else if and .Values.canary.image.repository .Values.canary.image.tag -}}
 {{- printf "%s:%s" .Values.canary.image.repository .Values.canary.image.tag -}}
-{{- else if .Values.canary.image.tag -}}
-{{- if hasKey .Values.image "repository" -}}
-{{- printf "%s:%s" .Values.image.repository .Values.canary.image.tag -}}
 {{- else -}}
-{{- printf "%s:%s" "docker.io/emissaryingress/emissary" .Values.canary.image.tag -}}
+{{- $repo := ( .Values.image.repository | default .Values.defaultImageRepository ) -}}
+{{- $tag := ( .Values.image.tag | default .Chart.AppVersion ) -}}
+{{- printf "%s:%s" $repo $tag -}}
 {{- end -}}
-{{- else -}}
-{{- printf "%s" "" -}}
 {{- end -}}
-{{- end -}}
-
 
 {{/*
 Create chart namespace based on override value.
