@@ -89,9 +89,16 @@ def main():
     parser.add_argument("--footer", type=str, help="File to print after YAML output")
     args = parser.parse_args()
 
-    # Update default architectures globally
+    # Update default architectures globally. If an architecture includes
+    # the OS as well (e.g. "linux/arm64" instead of just "arm64", strip
+    # that off.
 
-    BuildStyle.ARCHITECTURES = args.arch.split(",")
+    BuildStyle.ARCHITECTURES = []
+    for arch in args.arch.split(","):
+        arch = arch.strip().split("/")[-1]
+        BuildStyle.ARCHITECTURES.append(arch)
+
+    # sys.stderr.write(f"Using architectures: {','.join(BuildStyle.ARCHITECTURES)}\n")
 
     # Rebuild BUILDS with possibly new architectures
     builds = [
