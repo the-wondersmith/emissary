@@ -16,10 +16,8 @@ remote: origin
 ################################################
 
 charts:
-  - ./
-chart-dirs:
-  - ./
-
+  - ./emissary-crds
+  - ./emissary-ingress
 
 # namespace: ambassador
 # release-label: release
@@ -30,5 +28,5 @@ chart-dirs:
 
 validate-maintainers: false
 validate-chart-schema: true
-validate-yaml: false
+validate-yaml: true
 # check-version-increment: true

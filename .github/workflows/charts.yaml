@@ -27,11 +27,6 @@ jobs:
       - name: Install Deps
         uses: ./.github/actions/setup-deps
 
-    #   - name: Lint Charts
-    #     shell: bash
-    #     run: |
-    #       make ???
-
       - name: Build Charts
         shell: bash
         run: |
