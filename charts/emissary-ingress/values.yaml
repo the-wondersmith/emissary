@@ -48,7 +48,7 @@ ingressClassResource:
 
 # Enable autoscaling using HorizontalPodAutoscaler
 # daemonSet: true, autoscaling will be disabled
-autoscaling: # +doc-gen:break
+autoscaling:  # +doc-gen:break
   enabled: false
   minReplicas: 2
   maxReplicas: 5
@@ -110,11 +110,11 @@ imagePullSecrets: []
 security:
   # Security Context for all containers in the pod.
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#podsecuritycontext-v1-core
-  podSecurityContext: # +doc-gen:break
+  podSecurityContext:  # +doc-gen:break
     runAsUser: 8888
   # Security Context for the Ambassador container specifically
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#securitycontext-v1-core
-  containerSecurityContext: # +doc-gen:break
+  containerSecurityContext:  # +doc-gen:break
     allowPrivilegeEscalation: false
   #
   # Please note that PodSecurityPolicy has been deprecated as of Kubernetes v1.21 and will be removed in Kubernetes v1.25.
@@ -210,7 +210,7 @@ service:
 adminService:
   # If true, create a service for Ambassador's admin UI
   create: true
-  #	Ambassador's admin service type to be used
+  # Ambassador's admin service type to be used
   type: ClusterIP
   port: 8877
   snapshotPort: 8005
@@ -271,13 +271,13 @@ initContainers: []
 sidecarContainers: []
 
 # Liveness probe for emissary pods
-livenessProbe: # +doc-gen:break
+livenessProbe:  # +doc-gen:break
   initialDelaySeconds: 30
   periodSeconds: 3
   failureThreshold: 3
 
 # Readiness probe for emissary pods
-readinessProbe: # +doc-gen:break
+readinessProbe:  # +doc-gen:break
   initialDelaySeconds: 30
   periodSeconds: 3
   failureThreshold: 3
@@ -310,7 +310,7 @@ deploymentLabels: {}
 deploymentAnnotations: {}
 
 # CPU/memory resource requests/limits
-resources: # +doc-gen:break
+resources:  # +doc-gen:break
   # Recommended resource requests and limits for Ambassador
   limits:
     memory: 600Mi
@@ -351,7 +351,7 @@ metrics:
 # Configuration for a Consul Resolver
 #   address: consul-server.default.svc.cluster.local:8500
 #   datacenter: dc1
-resolvers: # +doc-gen:break
+resolvers:  # +doc-gen:break
   endpoint:
     create: false
     name: endpoint
@@ -378,7 +378,7 @@ module:
 #
 # Ambassador now exposes the /metrics endpoint in Envoy.
 # See https://www.getambassador.io/user-guide/monitoring#deployment for more information on how to use the /metrics endpoint
-prometheusExporter: # +doc-gen:break
+prometheusExporter:  # +doc-gen:break
   enabled: false
   repository: prom/statsd-exporter
   tag: v0.8.1
@@ -421,7 +421,7 @@ createNamespace: false
 createDefaultListeners: false
 
 # Configure a 'lifecycle' section for the main pod
-lifecycle: # +doc-gen:break
+lifecycle:  # +doc-gen:break
   # Example block that works well if the main container is running behind a load balancer that
   # is slow to deregister pods - e.g. with IP-type registration in an AWS TargetGroup:
   # lifecycle:
