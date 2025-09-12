@@ -9,10 +9,6 @@ include build-aux/tools.mk
 # to "emissary-test".
 TEST_CLUSTER ?= emissary-test
 
-# To support contributors building project on M1 Macs we will default container builds to run as linux/amd64 rather than
-# the host architecture. Setting the corresponding environment variable allows overriding it if want to work with other architectures.
-BUILD_ARCH ?= linux/amd64
-
 # Bootstrapping the build env
 #
 ifneq ($(MAKECMDGOALS),$(OSS_HOME)/build-aux/go-version.txt)
@@ -38,6 +34,11 @@ ifneq ($(MAKECMDGOALS),$(OSS_HOME)/build-aux/go-version.txt)
 	ARCH := arm64
   endif
   export ARCH
+
+  # By default, we'll build for the same processor architecture as this Makefile
+  # is running on, but you can change this. Unsetting it will build for all amd64
+  # and arm64.
+  BUILD_ARCH ?= linux/$(ARCH)
 
   # This is a bit hackish, at the moment, but let's run with it for now
   # and see how far we get.
