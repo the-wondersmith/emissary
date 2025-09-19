@@ -36,17 +36,17 @@ generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.conv
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.conversion-spoke.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v3alpha1/zz_generated.conversion-hub.go
 # Individual files: YAML
-generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in
-generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-emissaryns.yaml.in
-generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-defaultns.yaml.in
+# generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in
+# generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-emissaryns.yaml.in
+# generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-defaultns.yaml.in
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/crds.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/ambassador.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/crds.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_cluster_scope.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_namespace_scope.yaml
-generate-fast/files += $(OSS_HOME)/test/apiext/testdata/deployment.yaml
-generate-fast/files += $(OSS_HOME)/test/apiext/testdata/crds.yaml
-generate-fast/files += $(OSS_HOME)/test/apiext/testdata/rbac.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/ambassador.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/crds.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_cluster_scope.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_namespace_scope.yaml
+# generate-fast/files += $(OSS_HOME)/test/apiext/testdata/deployment.yaml
+# generate-fast/files += $(OSS_HOME)/test/apiext/testdata/crds.yaml
+# generate-fast/files += $(OSS_HOME)/test/apiext/testdata/rbac.yaml
 # Individual files: Test TLS Certificates
 generate-fast/files += $(OSS_HOME)/docker/test-auth/authsvc.crt
 generate-fast/files += $(OSS_HOME)/docker/test-auth/authsvc.key
@@ -179,25 +179,6 @@ $(OSS_HOME)/%/zz_generated.conversion-hub.go: build-aux/conversion-hub.go.awk FO
 $(OSS_HOME)/%/zz_generated.conversion-spoke.go: build-aux/conversion-spoke.go.awk FORCE
 	rm -f $@
 	gawk -v pkgname=$(notdir $*) -f build-aux/conversion-spoke.go.awk $(sort $(wildcard $(@D)/*.go)) | gofmt >$@
-
-$(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiserver-kubectl $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/python/tests/src/tests/integration/manifests/crds.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiserver-kat $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/pkg/api/getambassador.io/crds.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=internal-validator $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/test/apiext/testdata/crds.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiext-crds $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/test/apiext/testdata/rbac.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiext-rbac $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/test/apiext/testdata/deployment.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiext-deployment --image="e2e-registry:10000/apiext:latest" $(sort $(wildcard $</*.yaml)) >$@
-
 
 # Sets build arch of APIEXT e2e container for testing
 APIEXT_BUILD_ARCH ?= linux/amd64,linux/arm64
