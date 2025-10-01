@@ -25,7 +25,32 @@ helm-registry-check:
 	fi
 .PHONY: helm-registry-check
 
-$(CRDS_CHART): version-check $(CHART_DIR)/emissary-crds
+# These are the CRDs that we want to package into Helm templates. Perhaps, later,
+# this should be auto-generated -- but not now, when we want to be sure we have
+# control over exactly what goes in.
+CRD_FILES= \
+	authservices.yaml \
+	consulresolvers.yaml \
+	devportals.yaml \
+	hosts.yaml \
+	kubernetesendpointresolvers.yaml \
+	kubernetesserviceresolvers.yaml \
+	listeners.yaml \
+	logservices.yaml \
+	mappings.yaml \
+	modules.yaml \
+	ratelimitservices.yaml \
+	tcpmappings.yaml \
+	tlscontexts.yaml \
+	tracingservices.yaml
+
+helmify-crds: $(OSS_HOME)/_generate.tmp/crds
+	rm -f $(patsubst %,$(CHART_DIR)/emissary-crds/templates/%,$(CRD_FILES))
+	python $(CHART_DIR)/helmify-crds.py \
+		--output $(CHART_DIR)/emissary-crds/templates \
+		$(patsubst %,$(OSS_HOME)/_generate.tmp/crds/getambassador.io_%,$(CRD_FILES))
+
+$(CRDS_CHART): version-check $(CHART_DIR)/emissary-crds helmify-crds
 	( cd $(CHART_DIR) && bash $(BUILD_CHART) emissary-crds $(VERSION) $(IMAGE_REPO) $(CHART_DIR) )
 	ls -l $(CRDS_CHART)
 

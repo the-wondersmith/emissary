@@ -4,8 +4,8 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
   labels:
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     emissary-ingress.dev/control-plane-ns: {{ .Release.Namespace }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
   name: devportals.getambassador.io
 spec:
   {{- include "partials.conversion" . }}
@@ -20,21 +20,20 @@ spec:
   preserveUnknownFields: false
   scope: Namespaced
   versions:
-{{- if .Values.enableLegacyVersions -}}
+{{- if .Values.enableLegacyVersions }}
 {{- if .Values.enableV1 }}
   - name: v1
     schema:
       openAPIV3Schema:
-        description: "DevPortal is the Schema for the DevPortals API \n DevPortal\
-          \ resources specify the `what` and `how` is shown in a DevPortal: \n 1.\
-          \ `what` is in a DevPortal can be controlled with \n - a `selector`, that\
-          \ can be used for filtering `Mappings`. \n - a `docs` listing of (services,\
-          \ url) \n 2. `how` is a pointer to some `contents` (a checkout of a Git\
-          \ repository with go-templates/markdown/css). \n Multiple `DevPortal`s can\
-          \ exist in the cluster, and the Dev Portal server will show them at different\
-          \ endpoints. A `DevPortal` resource with a special name, `ambassador`, will\
-          \ be used for configuring the default Dev Portal (served at `/docs/` by\
-          \ default)."
+        description: "DevPortal is the Schema for the DevPortals API \n DevPortal resources\
+          \ specify the `what` and `how` is shown in a DevPortal: \n 1. `what` is in\
+          \ a DevPortal can be controlled with \n - a `selector`, that can be used for\
+          \ filtering `Mappings`. \n - a `docs` listing of (services, url) \n 2. `how`\
+          \ is a pointer to some `contents` (a checkout of a Git repository with go-templates/markdown/css).\
+          \ \n Multiple `DevPortal`s can exist in the cluster, and the Dev Portal server\
+          \ will show them at different endpoints. A `DevPortal` resource with a special\
+          \ name, `ambassador`, will be used for configuring the default Dev Portal\
+          \ (served at `/docs/` by default)."
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -51,6 +50,14 @@ spec:
           spec:
             description: DevPortalSpec defines the desired state of DevPortal
             properties:
+              ambassador_id:
+                description: "AmbassadorID declares which Ambassador instances should\
+                  \ pay attention to this resource.  May either be a string or a list\
+                  \ of strings.  If no value is provided, the default is: \n ambassador_id:\
+                  \ - \"default\""
+                items:
+                  type: string
+                type: d6e-union:string,array
               content:
                 description: Content specifies where the content shown in the DevPortal
                   come from
@@ -78,9 +85,8 @@ spec:
                       description: Service is the service being documented
                       type: string
                     timeout_ms:
-                      description: Timeout specifies the amount of time devportal
-                        will wait for the downstream service to report an openapi
-                        spec back
+                      description: Timeout specifies the amount of time devportal will
+                        wait for the downstream service to report an openapi spec back
                       type: integer
                     url:
                       description: URL is the URL used for obtaining docs
@@ -88,28 +94,28 @@ spec:
                   type: object
                 type: array
               naming_scheme:
-                description: Describes how to display "services" in the DevPortal.
-                  Default namespace.name
+                description: Describes how to display "services" in the DevPortal. Default
+                  namespace.name
                 enum:
                 - namespace.name
                 - name.prefix
                 type: string
               preserve_servers:
                 description: Configures this DevPortal to use server definitions from
-                  the openAPI doc instead of rewriting them based on the url used
-                  for the connection.
+                  the openAPI doc instead of rewriting them based on the url used for
+                  the connection.
                 type: boolean
               search:
-                description: DevPortalSearchSpec allows configuration over search
-                  functionality for the DevPortal
+                description: DevPortalSearchSpec allows configuration over search functionality
+                  for the DevPortal
                 properties:
                   enabled:
                     type: boolean
                   type:
-                    description: 'Type of search. "title-only" does a fuzzy search
-                      over openapi and page titles "all-content" will fuzzy search
-                      over all openapi and page content. "title-only" is the default.
-                      warning:  using all-content may incur a larger memory footprint'
+                    description: 'Type of search. "title-only" does a fuzzy search over
+                      openapi and page titles "all-content" will fuzzy search over all
+                      openapi and page content. "title-only" is the default. warning:  using
+                      all-content may incur a larger memory footprint'
                     enum:
                     - title-only
                     - all-content
@@ -125,14 +131,13 @@ spec:
                       be present in Mappings for being present in this DevPortal.
                     type: object
                   matchNamespaces:
-                    description: MatchNamespaces is a list of namespaces that will
-                      be included in this DevPortal.
+                    description: MatchNamespaces is a list of namespaces that will be
+                      included in this DevPortal.
                     items:
                       type: string
                     type: array
                 type: object
             type: object
-            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: false
@@ -140,16 +145,15 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: "DevPortal is the Schema for the DevPortals API \n DevPortal\
-          \ resources specify the `what` and `how` is shown in a DevPortal: \n 1.\
-          \ `what` is in a DevPortal can be controlled with \n - a `selector`, that\
-          \ can be used for filtering `Mappings`. \n - a `docs` listing of (services,\
-          \ url) \n 2. `how` is a pointer to some `contents` (a checkout of a Git\
-          \ repository with go-templates/markdown/css). \n Multiple `DevPortal`s can\
-          \ exist in the cluster, and the Dev Portal server will show them at different\
-          \ endpoints. A `DevPortal` resource with a special name, `ambassador`, will\
-          \ be used for configuring the default Dev Portal (served at `/docs/` by\
-          \ default)."
+        description: "DevPortal is the Schema for the DevPortals API \n DevPortal resources\
+          \ specify the `what` and `how` is shown in a DevPortal: \n 1. `what` is in\
+          \ a DevPortal can be controlled with \n - a `selector`, that can be used for\
+          \ filtering `Mappings`. \n - a `docs` listing of (services, url) \n 2. `how`\
+          \ is a pointer to some `contents` (a checkout of a Git repository with go-templates/markdown/css).\
+          \ \n Multiple `DevPortal`s can exist in the cluster, and the Dev Portal server\
+          \ will show them at different endpoints. A `DevPortal` resource with a special\
+          \ name, `ambassador`, will be used for configuring the default Dev Portal\
+          \ (served at `/docs/` by default)."
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -166,6 +170,14 @@ spec:
           spec:
             description: DevPortalSpec defines the desired state of DevPortal
             properties:
+              ambassador_id:
+                description: "AmbassadorID declares which Ambassador instances should\
+                  \ pay attention to this resource.  May either be a string or a list\
+                  \ of strings.  If no value is provided, the default is: \n ambassador_id:\
+                  \ - \"default\""
+                items:
+                  type: string
+                type: d6e-union:string,array
               content:
                 description: Content specifies where the content shown in the DevPortal
                   come from
@@ -193,9 +205,8 @@ spec:
                       description: Service is the service being documented
                       type: string
                     timeout_ms:
-                      description: Timeout specifies the amount of time devportal
-                        will wait for the downstream service to report an openapi
-                        spec back
+                      description: Timeout specifies the amount of time devportal will
+                        wait for the downstream service to report an openapi spec back
                       type: integer
                     url:
                       description: URL is the URL used for obtaining docs
@@ -203,28 +214,28 @@ spec:
                   type: object
                 type: array
               naming_scheme:
-                description: Describes how to display "services" in the DevPortal.
-                  Default namespace.name
+                description: Describes how to display "services" in the DevPortal. Default
+                  namespace.name
                 enum:
                 - namespace.name
                 - name.prefix
                 type: string
               preserve_servers:
                 description: Configures this DevPortal to use server definitions from
-                  the openAPI doc instead of rewriting them based on the url used
-                  for the connection.
+                  the openAPI doc instead of rewriting them based on the url used for
+                  the connection.
                 type: boolean
               search:
-                description: DevPortalSearchSpec allows configuration over search
-                  functionality for the DevPortal
+                description: DevPortalSearchSpec allows configuration over search functionality
+                  for the DevPortal
                 properties:
                   enabled:
                     type: boolean
                   type:
-                    description: 'Type of search. "title-only" does a fuzzy search
-                      over openapi and page titles "all-content" will fuzzy search
-                      over all openapi and page content. "title-only" is the default.
-                      warning:  using all-content may incur a larger memory footprint'
+                    description: 'Type of search. "title-only" does a fuzzy search over
+                      openapi and page titles "all-content" will fuzzy search over all
+                      openapi and page content. "title-only" is the default. warning:  using
+                      all-content may incur a larger memory footprint'
                     enum:
                     - title-only
                     - all-content
@@ -240,14 +251,13 @@ spec:
                       be present in Mappings for being present in this DevPortal.
                     type: object
                   matchNamespaces:
-                    description: MatchNamespaces is a list of namespaces that will
-                      be included in this DevPortal.
+                    description: MatchNamespaces is a list of namespaces that will be
+                      included in this DevPortal.
                     items:
                       type: string
                     type: array
                 type: object
             type: object
-            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: true
@@ -255,16 +265,15 @@ spec:
   - name: v3alpha1
     schema:
       openAPIV3Schema:
-        description: "DevPortal is the Schema for the DevPortals API \n DevPortal\
-          \ resources specify the `what` and `how` is shown in a DevPortal: \n 1.\
-          \ `what` is in a DevPortal can be controlled with \n - a `selector`, that\
-          \ can be used for filtering `Mappings`. \n - a `docs` listing of (services,\
-          \ url) \n 2. `how` is a pointer to some `contents` (a checkout of a Git\
-          \ repository with go-templates/markdown/css). \n Multiple `DevPortal`s can\
-          \ exist in the cluster, and the Dev Portal server will show them at different\
-          \ endpoints. A `DevPortal` resource with a special name, `ambassador`, will\
-          \ be used for configuring the default Dev Portal (served at `/docs/` by\
-          \ default)."
+        description: "DevPortal is the Schema for the DevPortals API \n DevPortal resources\
+          \ specify the `what` and `how` is shown in a DevPortal: \n 1. `what` is in\
+          \ a DevPortal can be controlled with \n - a `selector`, that can be used for\
+          \ filtering `Mappings`. \n - a `docs` listing of (services, url) \n 2. `how`\
+          \ is a pointer to some `contents` (a checkout of a Git repository with go-templates/markdown/css).\
+          \ \n Multiple `DevPortal`s can exist in the cluster, and the Dev Portal server\
+          \ will show them at different endpoints. A `DevPortal` resource with a special\
+          \ name, `ambassador`, will be used for configuring the default Dev Portal\
+          \ (served at `/docs/` by default)."
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -315,9 +324,8 @@ spec:
                       description: Service is the service being documented
                       type: string
                     timeout_ms:
-                      description: Timeout specifies the amount of time devportal
-                        will wait for the downstream service to report an openapi
-                        spec back
+                      description: Timeout specifies the amount of time devportal will
+                        wait for the downstream service to report an openapi spec back
                       type: integer
                     url:
                       description: URL is the URL used for obtaining docs
@@ -325,28 +333,28 @@ spec:
                   type: object
                 type: array
               naming_scheme:
-                description: Describes how to display "services" in the DevPortal.
-                  Default namespace.name
+                description: Describes how to display "services" in the DevPortal. Default
+                  namespace.name
                 enum:
                 - namespace.name
                 - name.prefix
                 type: string
               preserve_servers:
                 description: Configures this DevPortal to use server definitions from
-                  the openAPI doc instead of rewriting them based on the url used
-                  for the connection.
+                  the openAPI doc instead of rewriting them based on the url used for
+                  the connection.
                 type: boolean
               search:
-                description: DevPortalSearchSpec allows configuration over search
-                  functionality for the DevPortal
+                description: DevPortalSearchSpec allows configuration over search functionality
+                  for the DevPortal
                 properties:
                   enabled:
                     type: boolean
                   type:
-                    description: 'Type of search. "title-only" does a fuzzy search
-                      over openapi and page titles "all-content" will fuzzy search
-                      over all openapi and page content. "title-only" is the default.
-                      warning:  using all-content may incur a larger memory footprint'
+                    description: 'Type of search. "title-only" does a fuzzy search over
+                      openapi and page titles "all-content" will fuzzy search over all
+                      openapi and page content. "title-only" is the default. warning:  using
+                      all-content may incur a larger memory footprint'
                     enum:
                     - title-only
                     - all-content
@@ -362,8 +370,8 @@ spec:
                       be present in Mappings for being present in this DevPortal.
                     type: object
                   matchNamespaces:
-                    description: MatchNamespaces is a list of namespaces that will
-                      be included in this DevPortal.
+                    description: MatchNamespaces is a list of namespaces that will be
+                      included in this DevPortal.
                     items:
                       type: string
                     type: array
