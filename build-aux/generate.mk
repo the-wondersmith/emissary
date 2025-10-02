@@ -32,9 +32,13 @@ generate/files      += $(OSS_HOME)/DEPENDENCY_LICENSES.md
 generate-fast/files += $(OSS_HOME)/CHANGELOG.md
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v1/zz_generated.conversion.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v1/zz_generated.conversion-spoke.go
+generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v1/zz_generated.deepcopy.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.conversion.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.conversion-spoke.go
+generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.deepcopy.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v3alpha1/zz_generated.conversion-hub.go
+generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v3alpha1/zz_generated.deepcopy.go
+generate/files      += $(OSS_HOME)/_generate.tmp/crds
 # Individual files: YAML
 # generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in
 # generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-emissaryns.yaml.in
@@ -157,6 +161,10 @@ $(OSS_HOME)/_generate.tmp/crds: $(tools/controller-gen) build-aux/copyright-boil
 		crd \
 		paths=./pkg/api/getambassador.io/... \
 		output:crd:dir=./_generate.tmp/crds
+
+# The deepcopy files are generated as a side effect of the controller-gen CRD generation
+$(OSS_HOME)/pkg/api/getambassador.io/%/zz_generated.deepcopy.go: $(OSS_HOME)/_generate.tmp/crds
+	@# This file is generated as a side effect of the controller-gen rule above
 
 $(OSS_HOME)/%/zz_generated.conversion.go: $(tools/conversion-gen) build-aux/copyright-boilerplate.go.txt FORCE
 	rm -f $@ $(@D)/*.scaffold.go
