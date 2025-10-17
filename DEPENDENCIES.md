@@ -182,7 +182,7 @@ libraries:
     ----                -------   ----------
     Flask               3.1.1     3-clause BSD license
     Jinja2              3.1.6     3-clause BSD license
-    MarkupSafe          3.0.2     2-clause BSD license
+    MarkupSafe          3.0.3     3-clause BSD license
     PyYAML              6.0.2     MIT license
     Werkzeug            3.1.3     3-clause BSD license
     blinker             1.9.0     MIT license

@@ -92,47 +92,6 @@ include $(OSS_HOME)/build-aux/lint.mk
 
 githooks: .git/hooks/prepare-commit-msg
 
-preflight-dev-kubeconfig:
-	@if [ -z "$(DEV_KUBECONFIG)" ] ; then \
-		echo "DEV_KUBECONFIG must be set"; \
-		exit 1; \
-	fi
-.PHONY: preflight-dev-kubeconfig
-
-deploy: push preflight-cluster
-	$(MAKE) deploy-only
-.PHONY: deploy
-
-deploy-only: preflight-dev-kubeconfig $(tools/kubectl) build-output/yaml-$(patsubst v%,%,$(VERSION)) $(boguschart_dir)
-	mkdir -p $(OSS_HOME)/build/helm/ && \
-	($(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) create ns ambassador || true) && \
-	helm template ambassador --output-dir $(OSS_HOME)/build/helm -n ambassador $(boguschart_dir) \
-		--set createNamespace=true \
-		--set service.selector.service=ambassador \
-		--set replicaCount=1 \
-		--set enableAES=false \
-		--set image.fullImageOverride=$$(sed -n 2p docker/$(LCNAME).docker.push.remote) && \
-	$(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) apply -f build-output/yaml-$(patsubst v%,%,$(VERSION))/emissary-crds.yaml
-	$(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) -n emissary-system wait --for condition=available --timeout=90s deploy emissary-apiext && \
-	$(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) apply -f $(OSS_HOME)/build/helm/emissary-ingress/templates && \
-	rm -rf $(OSS_HOME)/build/helm
-	$(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) -n ambassador wait --for condition=available --timeout=90s deploy --all
-	@printf "$(GRN)Your ambassador service IP:$(END) $(BLD)$$($(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) get -n ambassador service ambassador -o 'go-template={{range .status.loadBalancer.ingress}}{{print .ip "\n"}}{{end}}')$(END)\n"
-	@printf "$(GRN)Your ambassador image:$(END) $(BLD)$$($(tools/kubectl) --kubeconfig $(DEV_KUBECONFIG) get -n ambassador deploy ambassador -o 'go-template={{(index .spec.template.spec.containers 0).image}}')$(END)\n"
-	@printf "$(GRN)Your built image:$(END) $(BLD)$$(sed -n 2p docker/$(LCNAME).docker.push.remote)$(END)\n"
-.PHONY: deploy-only
-
-##############################################
-##@ Telepresence based runners
-##############################################
-
-.PHONY: tel-quit
-tel-quit: ## Quit telepresence
-	telepresence quit
-
-tel-list: ## List intercepts
-	telepresence list
-
 ## Helper target for setting up local dev environment when working with python components
 ## such as pytest, diagd, etc...
 .PHONY: python-dev-setup

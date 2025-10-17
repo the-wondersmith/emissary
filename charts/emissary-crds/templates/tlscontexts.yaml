@@ -4,8 +4,8 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
   labels:
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     emissary-ingress.dev/control-plane-ns: {{ .Release.Namespace }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
   name: tlscontexts.getambassador.io
 spec:
   {{- include "partials.conversion" . }}
@@ -20,7 +20,7 @@ spec:
   preserveUnknownFields: false
   scope: Namespaced
   versions:
-{{- if .Values.enableLegacyVersions -}}
+{{- if .Values.enableLegacyVersions }}
 {{- if .Values.enableV1 }}
   - name: v1
     schema:
@@ -44,6 +44,14 @@ spec:
             properties:
               alpn_protocols:
                 type: string
+              ambassador_id:
+                description: "AmbassadorID declares which Ambassador instances should\
+                  \ pay attention to this resource.  May either be a string or a list\
+                  \ of strings.  If no value is provided, the default is: \n ambassador_id:\
+                  \ - \"default\""
+                items:
+                  type: string
+                type: d6e-union:string,array
               ca_secret:
                 type: string
               cacert_chain_file:
@@ -91,7 +99,6 @@ spec:
               v3CRLSecret:
                 type: string
             type: object
-            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: false
@@ -118,6 +125,14 @@ spec:
             properties:
               alpn_protocols:
                 type: string
+              ambassador_id:
+                description: "AmbassadorID declares which Ambassador instances should\
+                  \ pay attention to this resource.  May either be a string or a list\
+                  \ of strings.  If no value is provided, the default is: \n ambassador_id:\
+                  \ - \"default\""
+                items:
+                  type: string
+                type: d6e-union:string,array
               ca_secret:
                 type: string
               cacert_chain_file:
@@ -165,7 +180,6 @@ spec:
               v3CRLSecret:
                 type: string
             type: object
-            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: true

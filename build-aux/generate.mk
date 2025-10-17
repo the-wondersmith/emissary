@@ -32,21 +32,25 @@ generate/files      += $(OSS_HOME)/DEPENDENCY_LICENSES.md
 generate-fast/files += $(OSS_HOME)/CHANGELOG.md
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v1/zz_generated.conversion.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v1/zz_generated.conversion-spoke.go
+generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v1/zz_generated.deepcopy.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.conversion.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.conversion-spoke.go
+generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v2/zz_generated.deepcopy.go
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v3alpha1/zz_generated.conversion-hub.go
+generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/v3alpha1/zz_generated.deepcopy.go
+generate/files      += $(OSS_HOME)/_generate.tmp/crds
 # Individual files: YAML
-generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in
-generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-emissaryns.yaml.in
-generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-defaultns.yaml.in
+# generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in
+# generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-emissaryns.yaml.in
+# generate-fast/files += $(OSS_HOME)/manifests/emissary/emissary-defaultns.yaml.in
 generate-fast/files += $(OSS_HOME)/pkg/api/getambassador.io/crds.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/ambassador.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/crds.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_cluster_scope.yaml
-generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_namespace_scope.yaml
-generate-fast/files += $(OSS_HOME)/test/apiext/testdata/deployment.yaml
-generate-fast/files += $(OSS_HOME)/test/apiext/testdata/crds.yaml
-generate-fast/files += $(OSS_HOME)/test/apiext/testdata/rbac.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/ambassador.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/crds.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_cluster_scope.yaml
+# generate-fast/files += $(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_namespace_scope.yaml
+# generate-fast/files += $(OSS_HOME)/test/apiext/testdata/deployment.yaml
+# generate-fast/files += $(OSS_HOME)/test/apiext/testdata/crds.yaml
+# generate-fast/files += $(OSS_HOME)/test/apiext/testdata/rbac.yaml
 # Individual files: Test TLS Certificates
 generate-fast/files += $(OSS_HOME)/docker/test-auth/authsvc.crt
 generate-fast/files += $(OSS_HOME)/docker/test-auth/authsvc.key
@@ -158,6 +162,10 @@ $(OSS_HOME)/_generate.tmp/crds: $(tools/controller-gen) build-aux/copyright-boil
 		paths=./pkg/api/getambassador.io/... \
 		output:crd:dir=./_generate.tmp/crds
 
+# The deepcopy files are generated as a side effect of the controller-gen CRD generation
+$(OSS_HOME)/pkg/api/getambassador.io/%/zz_generated.deepcopy.go: $(OSS_HOME)/_generate.tmp/crds
+	@# This file is generated as a side effect of the controller-gen rule above
+
 $(OSS_HOME)/%/zz_generated.conversion.go: $(tools/conversion-gen) build-aux/copyright-boilerplate.go.txt FORCE
 	rm -f $@ $(@D)/*.scaffold.go
 	GOPATH= GOFLAGS=-mod=mod $(tools/conversion-gen) \
@@ -180,25 +188,6 @@ $(OSS_HOME)/%/zz_generated.conversion-spoke.go: build-aux/conversion-spoke.go.aw
 	rm -f $@
 	gawk -v pkgname=$(notdir $*) -f build-aux/conversion-spoke.go.awk $(sort $(wildcard $(@D)/*.go)) | gofmt >$@
 
-$(OSS_HOME)/manifests/emissary/emissary-crds.yaml.in: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiserver-kubectl $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/python/tests/src/tests/integration/manifests/crds.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiserver-kat $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/pkg/api/getambassador.io/crds.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=internal-validator $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/test/apiext/testdata/crds.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiext-crds $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/test/apiext/testdata/rbac.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiext-rbac $(sort $(wildcard $</*.yaml)) >$@
-
-$(OSS_HOME)/test/apiext/testdata/deployment.yaml: $(OSS_HOME)/_generate.tmp/crds $(tools/fix-crds)
-	$(tools/fix-crds) --target=apiext-deployment --image="e2e-registry:10000/apiext:latest" $(sort $(wildcard $</*.yaml)) >$@
-
-
 # Sets build arch of APIEXT e2e container for testing
 APIEXT_BUILD_ARCH ?= linux/amd64,linux/arm64
 
@@ -212,43 +201,6 @@ apiext-e2e-setup: vendor $(OSS_HOME)/test/apiext/testdata/crds.yaml $(OSS_HOME)/
 			--platform="$(APIEXT_BUILD_ARCH)" \
 			--push \
 			$(OSS_HOME);
-
-# Names for all the helm-expanded.yaml files (and thence output.yaml and *.yaml.in files)
-helm.name.emissary-emissaryns = emissary-ingress
-helm.name.emissary-defaultns = emissary-ingress
-helm.namespace.emissary-emissaryns = emissary
-helm.namespace.emissary-defaultns = default
-helm.name.emissary-emissaryns-migration = emissary-ingress
-helm.namespace.emissary-emissaryns-migration = emissary
-helm.name.emissary-defaultns-migration = emissary-ingress
-helm.namespace.emissary-defaultns-migration = default
-
-# IF YOU'RE LOOKING FOR *.yaml: recipes, look in main.mk.
-
-$(OSS_HOME)/k8s-config/%/helm-expanded.yaml: \
-  $(OSS_HOME)/k8s-config/%/values.yaml \
-  $(boguschart_dir)
-	helm template --namespace=$(helm.namespace.$*) --values=$(@D)/values.yaml $(or $(helm.name.$*),$*) $(boguschart_dir) >$@
-$(OSS_HOME)/k8s-config/%/output.yaml: \
-  $(OSS_HOME)/k8s-config/%/helm-expanded.yaml \
-  $(OSS_HOME)/k8s-config/%/require.yaml \
-  $(tools/filter-yaml)
-	$(tools/filter-yaml) $(filter %/helm-expanded.yaml,$^) $(filter %/require.yaml,$^) >$@
-k8s-config.clean:
-	rm -f k8s-config/*/helm-expanded.yaml k8s-config/*/output.yaml
-clean: k8s-config.clean
-
-$(OSS_HOME)/manifests/emissary/%.yaml.in: $(OSS_HOME)/k8s-config/%/output.yaml
-	cp $< $@
-
-$(OSS_HOME)/python/tests/src/tests/integration/manifests/%.yaml: $(OSS_HOME)/k8s-config/kat-%/output.yaml
-	sed -e 's/«/{/g' -e 's/»/}/g' -e 's/♯.*//g' -e 's/- ←//g' <$< >$@
-
-$(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_cluster_scope.yaml: $(OSS_HOME)/k8s-config/kat-rbac-multinamespace/output.yaml
-	sed -e 's/«/{/g' -e 's/»/}/g' -e 's/♯.*//g' -e 's/- ←//g' <$< >$@
-
-$(OSS_HOME)/python/tests/src/tests/integration/manifests/rbac_namespace_scope.yaml: $(OSS_HOME)/k8s-config/kat-rbac-singlenamespace/output.yaml
-	sed -e 's/«/{/g' -e 's/»/}/g' -e 's/♯.*//g' -e 's/- ←//g' <$< >$@
 
 #
 # Generate report on dependencies
