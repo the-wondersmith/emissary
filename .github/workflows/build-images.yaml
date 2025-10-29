@@ -1,17 +1,49 @@
+---
 name: Build Docker Images (Reusable)
 
 on:
   workflow_call:
     inputs:
       ref:
-        description: 'Git ref to checkout'
-        required: false
         type: string
+        required: false
         default: ${{ github.ref }}
+        description: Git ref to checkout
+      components:
+        type: string
+        required: false
+        description: |-
+          The list of components to build images for, formatted as a space-separated list of strings.
+
+          Defaults to: apiext emissary kat-client kat-server test-auth test-shadow test-stats
+        default: >-
+          apiext
+          emissary
+          kat-client
+          kat-server
+          test-auth
+          test-shadow
+          test-stats
+      artifact-bundle-prefix:
+        type: string
+        required: true
+        description: Prefix for arch-specific artifact bundle name
+
     outputs:
-      artifact-name-prefix:
-        description: 'Prefix for artifact names'
-        value: ${{ jobs.build-images.outputs.artifact-name-prefix }}
+      artifact-id:
+        value: ${{ jobs.build-images.outputs.artifact-id }}
+        description: GitHub ID of the built image artifact(s)
+      artifact-url:
+        value: ${{ jobs.build-images.outputs.artifact-url }}
+        description: >-
+          URL to download the built images artifact. Can be used in many scenarios
+          such as linking to images built by a specific CI run in issues or pull requests.
+          Users must be logged-in in order for this URL to work. This URL is valid as
+          long as the images artifact has not expired or the images artifact, run
+          or repository have not been deleted.
+      artifact-digest:
+        value: ${{ jobs.build-images.outputs.artifact-digest }}
+        description: SHA-256 digest of the built images artifact
 
 permissions:
   contents: read
@@ -23,19 +55,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64]
+        arch:
+          - amd64
+          - arm64
         include:
-          - arch: amd64
-            runner: ubuntu-24.04
+          #- arch: amd64
+          #  runner: ubuntu-24.04
           - arch: arm64
             runner: ubuntu-24.04-arm
 
     outputs:
-      artifact-name-prefix: ${{ steps.set-outputs.outputs.artifact-name-prefix }}
+      artifact-id: ${{ steps.upload-image-tarballs.outputs.artifact-id }}
+      artifact-url: ${{ steps.upload-image-tarballs.outputs.artifact-url }}
+      artifact-digest: ${{ steps.upload-image-tarballs.outputs.artifact-digest }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
@@ -54,11 +90,11 @@ jobs:
           distribution: goreleaser
 
       - name: Generate GoReleaser Config
-        run: |
-          python make-gorel.py \
-              --header gorel.prologue \
-              --arch ${{ matrix.arch }} \
-            > .goreleaser.yaml
+        run: >-
+          uv run -- python make-gorel.py
+          --header gorel.prologue
+          --arch ${{ matrix.arch }}
+          > .goreleaser.yaml
 
       - name: GoReleaser Check(s)
         shell: bash
@@ -70,31 +106,25 @@ jobs:
         run: |
           goreleaser release --clean --snapshot
 
-      - name: Save Docker Image to Tarball and Upload
+      - id: save-images-tarball
+        name: Save Docker Image to Tarball and Upload
+        shell: bash
         run: |
+          mkdir -p ${{ github.workspace }}/artifacts/images
+
           docker images
 
-          docker save \
-              ghcr.io/emissary-ingress/apiext:latest-${{ matrix.arch }} \
-              ghcr.io/emissary-ingress/emissary:latest-${{ matrix.arch }} \
-              ghcr.io/emissary-ingress/kat-client:latest-${{ matrix.arch }} \
-              ghcr.io/emissary-ingress/kat-server:latest-${{ matrix.arch }} \
-              ghcr.io/emissary-ingress/test-auth:latest-${{ matrix.arch }} \
-              ghcr.io/emissary-ingress/test-shadow:latest-${{ matrix.arch }} \
-              ghcr.io/emissary-ingress/test-stats:latest-${{ matrix.arch }} \
-            -o images-${{ matrix.arch }}.tar
+          for COMPONENT in ${{ inputs.components }}; do
+              docker save \
+              "ghcr.io/emissary-ingress/${COMPONENT}:latest-${{ matrix.arch }}" \
+              -o "${{ github.workspace }}/artifacts/images/${COMPONENT}-${{ matrix.arch }}.tar"
+          done
 
-          echo "DOCKER_TARBALL_NAME=images-${{ matrix.arch }}.tar" >> $GITHUB_ENV
-
-      - name: Set outputs
-        id: set-outputs
-        run: |
-          echo "artifact-name-prefix=images-${{ github.sha }}" >> $GITHUB_OUTPUT
-
-      - name: Upload Docker Image Artifact
-        uses: actions/upload-artifact@v4
+      - id: upload-image-tarballs
+        name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v5
         with:
-          name: images-${{ github.sha }}-${{ matrix.arch }}
-          path: ${{ env.DOCKER_TARBALL_NAME }}
+          name: ${{ inputs.artifact-bundle-prefix }}-${{ matrix.arch }}
           retention-days: 7
           if-no-files-found: error
+          path: ${{ github.workspace }}/artifacts/images/*.tar

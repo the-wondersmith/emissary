@@ -4,14 +4,17 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - dev/v4
+      - dev/v4/*
     tags:
-      - 'v4.**' # Triggers on any tag like v4.0.0, v4.1.2-rc.1, etc.
+      - v4.** # Triggers on any tag like v4.0.0, v4.1.2-rc.1, etc.
 
   pull_request:
-    types: [opened, synchronize, reopened] # The pull request events to listen for
+    types: # The pull request events to listen for
+      - opened
+      - reopened
+      - synchronize
     branches:
-      - 'dev/v4' # The base branch that the pull request is targeting
+      - dev/v4 # The base branch that the pull request is targeting
 
   workflow_dispatch: # Allows manual triggering of the workflow
 
@@ -31,19 +34,21 @@ jobs:
 
   gotest:
     name: Go Tests
+    if: ${{ vars.act != 'true' }}
     uses: ./.github/workflows/gotest.yaml
     with:
       ref: ${{ github.ref }}
 
   pytest:
     name: Python Tests
+    if: ${{ vars.act != 'true' }}
     uses: ./.github/workflows/pytest.yaml
     with:
       ref: ${{ github.ref }}
 
   build-charts:
     name: Build Charts
-    uses: ./.github/workflows/charts.yaml
+    uses: ./.github/workflows/build-charts.yaml
     with:
       ref: ${{ github.ref }}
 
@@ -52,20 +57,28 @@ jobs:
     uses: ./.github/workflows/build-images.yaml
     with:
       ref: ${{ github.ref }}
+      artifact-bundle-prefix: images-${{ github.sha }}
 
   test-images:
     name: Test Images
-    needs: build-images
+    needs:
+      - build-images
     uses: ./.github/workflows/test-images.yaml
     with:
       ref: ${{ github.ref }}
-      artifact-name-prefix: ${{ needs.build-images.outputs.artifact-name-prefix }}
+      artifact-bundle-prefix: images-${{ github.sha }}
 
   release:
     name: Release
-    needs: [lint, gotest, pytest, build-images, test-images]
-    if: startsWith(github.ref, 'refs/tags/v4.') && !contains(github.ref_name, '-')
+    if: ${{ vars.act == 'true' || (startsWith(github.ref, 'refs/tags/v4.') && !contains(github.ref_name, '-')) }}
+    needs:
+      - lint
+      - gotest
+      - pytest
+      - build-charts
+      - build-images
+      - test-images
+    secrets: inherit
     uses: ./.github/workflows/release.yaml
     with:
       ref: ${{ github.ref }}
-    secrets: inherit

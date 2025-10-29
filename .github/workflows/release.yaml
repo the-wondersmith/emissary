@@ -5,10 +5,10 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'Git ref to checkout'
-        required: false
         type: string
+        required: false
         default: ${{ github.ref }}
+        description: Git ref to checkout
 
 permissions:
   contents: read
@@ -18,15 +18,38 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     steps:
-      - name: Would Release
-        run: echo "Would release here..."
-      # - name: Install Deps
-      #   uses: ./.github/actions/setup-deps
-      # - name: GoReleaser Build
-      #   shell: bash
-      #   run: |
-      #     echo 'insert gh cli magic here'
-      #     exit 412
-      # - name: Collect Job Logs
-      #   uses: ./.github/actions/after-job
-      #   if: always()
+      # 1) pull down image and chart tarballs from actions/upload-artifact@v5
+      # 2) unpack and organize tarballs into discrete image / chart bundles
+      # 3) push single-arch images to GHCR/DockerHub
+      # 4) create and push multi-arch manifest to GHCR/DockerHub
+      # 5) push individual chart (ingress & crds) artifacts to GHCR/DockerHub
+      # 6) cut an actual GitHub release
+      # 7) Party on Wayne
+
+      - id: download-artifacts
+        name: Download CI Artifacts
+        uses: actions/download-artifact@v6
+        with:
+          merge-multiple: true
+          path: ${{ github.workspace }}/artifacts
+
+      - id: marshal-artifacts
+        name: Unpack & Marshal Artifacts
+        shell: bash
+        run: |
+          ls -la ${{ github.workspace }}/artifacts
+          sleep 30
+
+#      - id: release-artifacts
+#        name: Release
+#        uses: softprops/action-gh-release@v2
+#        with:
+#          make_latest: true
+#          fail_on_unmatched_files: true
+#          tag_name: ${{ inputs.release-tag || github.ref_name }}
+#          files: |
+#            ${{ github.workspace }}/artifacts/*
+#
+#      - name: Collect Job Logs
+#        uses: ./.github/actions/after-job
+#        if: always()
