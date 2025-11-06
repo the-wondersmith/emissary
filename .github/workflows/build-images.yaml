@@ -83,33 +83,46 @@ jobs:
       artifact-digest: ${{ steps.upload-image-tarballs.outputs.artifact-digest }}
 
     steps:
-      - name: Checkout
+      - id: checkout-repo
+        name: Checkout
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
 
-      - name: Install Deps
+      - id: install-deps
+        name: Install Deps
         uses: ./.github/actions/setup-deps
+        if: ${{ steps.checkout-repo.outcome == 'success' }}
 
-      - name: Set up Docker Buildx
+      - id: setup-docker-buildx
+        name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        if: ${{ steps.install-deps.outcome == 'success' }}
 
-      - name: Install GoReleaser
+      - id: install-goreleaser
+        name: Install GoReleaser
+        if: ${{ steps.setup-docker-buildx.outcome == 'success' }}
         uses: goreleaser/goreleaser-action@v6
         with:
           version: ~> v2
           install-only: true
           distribution: goreleaser
 
-      - name: Generate GoReleaser Config
+      - id: generate-goreleaser-config
+        name: Generate GoReleaser Config
+        if: ${{ steps.install-goreleaser.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         run: >-
           uv run -- python make-gorel.py
           --header gorel.prologue
           --arch ${{ matrix.arch }}
           > .goreleaser.yaml
 
-      - name: GoReleaser Check(s)
+      - id: goreleaser-check
+        name: GoReleaser Check(s)
+        if: ${{ steps.generate-goreleaser-config.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         shell: bash
         run: |
           goreleaser check
@@ -117,12 +130,15 @@ jobs:
 
       - id: goreleaser-build
         name: GoReleaser Build
-        continue-on-error: ${{ env.ACT && inputs.debug }}
+        if: ${{ steps.goreleaser-check.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         run: |
           goreleaser release --clean --snapshot
 
       - id: save-image-tarballs
         name: Save Docker Image to Tarball and Upload
+        if: ${{ steps.goreleaser-build.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         shell: bash
         env:
           JQ_FILTER: |-
@@ -153,8 +169,8 @@ jobs:
 
           docker images
 
-          SHORT_SHA="${GITHUB_SHA:0:8}"
-          COMPONENTS="$(echo '${{ inputs.components }}' | tr ' ' '|')"
+          export SHORT_SHA="${GITHUB_SHA:0:8}"
+          export COMPONENTS="$(echo '${{ inputs.components }}' | tr ' ' '|')"
 
           COMPONENT_IMAGES=($(docker images --no-trunc --format json | jq -sr "${JQ_FILTER}" | tr '\t' ' '))
 
@@ -168,54 +184,17 @@ jobs:
               printf 'saved image tarball:\n\tcomponent: %s\n\tpath: %s\n\timage: %s\n' "${COMPONENT}" "${IMAGE_PATH}" "${IMAGE}"
           done
 
-      - id: start-upterm-session
-        name: Start upterm session
-        shell: bash
-        continue-on-error: false
-        if: ${{ env.ACT == 'true' && (inputs.debug || steps.goreleaser-build.outcome == 'failure' || steps.save-image-tarballs.outcome == 'failure') }}
-        env:
-          CONTEXT: |
-            {
-              "env": ${{ toJSON(env) }},
-              "job": ${{ toJSON(job) }},
-              "vars": ${{ toJSON(vars) }},
-              "needs": ${{ toJSON(needs) }},
-              "steps": ${{ toJSON(steps) }},
-              "github": ${{ toJSON(github) }},
-              "inputs": ${{ toJSON(inputs) }},
-              "matrix": ${{ toJSON(matrix) }},
-              "runner": ${{ toJSON(runner) }},
-              "secrets": ${{ toJSON(secrets) }},
-              "strategy": ${{ toJSON(strategy) }}
-            }
-        run: |
-          export CONTEXT="$({ echo '---'; yq -Po yaml --null-input 'env(CONTEXT)'; })"
-
-          expect -c '
-          log_user 0
-          spawn upterm host --accept -- bash
-          expect {
-            -re "(yes/no)" { send "yes\r" }
-          }
-          log_user 1
-          interact
-          '
-
-          upterm session current
-
-          while pgrep upterm > /dev/null; do
-              sleep 5
-          done
-
-          if [[ "${{ steps.goreleaser-build.outcome == 'failure' || steps.save-image-tarballs.outcome == 'failure' }}" == 'true' ]]; then
-              exit 500
-          fi
-
       - id: upload-image-tarballs
         name: Upload Docker Image Artifact
+        if: ${{ steps.save-image-tarballs.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         uses: actions/upload-artifact@v5
         with:
           name: ${{ inputs.artifact-bundle-prefix }}-${{ matrix.arch }}
           retention-days: 7
           if-no-files-found: error
           path: ${{ github.workspace }}/artifacts/images/*.tar
+
+      - name: Start `upterm` Session
+        if: ${{ env.ACT && inputs.debug && failure() }}
+        uses: ./.github/actions/local-debug

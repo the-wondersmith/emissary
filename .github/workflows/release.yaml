@@ -15,13 +15,17 @@ on:
         default: false
         description: |
           Enable upterm debugging
-
-          NOTE: only available when running locally with netkos/act
       components:
         type: string
         required: true
         description: >-
           The list of components to build images for, formatted as a space-separated list of strings.
+      release-tag:
+        type: string
+        required: false
+        default: ${{ github.ref_name }}
+        description: >-
+          The tag to use for the release. Defaults to the current ref name.
       chart-registry:
         type: string
         required: false
@@ -69,27 +73,31 @@ jobs:
       # 5) push individual chart (ingress & crds) artifacts to GHCR/DockerHub
       # 6) cut an actual GitHub release
       # 7) Party on Wayne
-      - name: Checkout
-        if: ${{ env.ACT }}
+
+      - id: checkout-repo
+        name: Checkout
+        if: ${{ inputs.debug }}
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
 
-      - name: Install Deps
-        if: ${{ env.ACT }}
-        uses: ./.github/actions/setup-deps
-
-      - name: Set up Docker Buildx
+      - id: setup-docker-buildx
+        name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Configure Docker GHCR Auth
+      - id: configure-ghcr-auth
+        name: Configure Docker GHCR Auth
+        if: ${{ steps.setup-docker-buildx.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         shell: bash
         run: |
           echo ${{ github.token }} | docker login ghcr.io --username ${{ github.actor }} --password-stdin
 
       - id: download-artifacts
         name: Download CI Artifacts
+        if: ${{ steps.configure-ghcr-auth.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         uses: actions/download-artifact@v6
         with:
           merge-multiple: true
@@ -97,8 +105,9 @@ jobs:
 
       - id: push-artifacts
         name: Push Release Artifacts
+        if: ${{ steps.download-artifacts.outcome == 'success' }}
+        continue-on-error: ${{ inputs.debug }}
         shell: bash
-        continue-on-error: ${{ env.ACT && inputs.debug }}
         env:
           # possible values for `runner.arch`: ["X86", "X64", "ARM", "ARM64"]
           # see https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#example
@@ -201,58 +210,16 @@ jobs:
 
           echo "pushed-charts=${PUSHED_CHARTS[@]}" >> "${GITHUB_OUTPUT}"
 
-      - id: start-upterm-session
-        name: Start upterm session
-        shell: bash
-        if: ${{ env.ACT == 'true' && (inputs.debug || steps.push-artifacts.outcome == 'failure') }}
-        env:
-          CONTEXT: |
-            {
-              "env": ${{ toJSON(env) }},
-              "job": ${{ toJSON(job) }},
-              "vars": ${{ toJSON(vars) }},
-              "needs": ${{ toJSON(needs) }},
-              "steps": ${{ toJSON(steps) }},
-              "github": ${{ toJSON(github) }},
-              "inputs": ${{ toJSON(inputs) }},
-              "matrix": ${{ toJSON(matrix) }},
-              "runner": ${{ toJSON(runner) }},
-              "secrets": ${{ toJSON(secrets) }},
-              "strategy": ${{ toJSON(strategy) }}
-            }
-        run: |
-          export CONTEXT="$({ echo '---'; yq -Po yaml --null-input 'env(CONTEXT)'; })"
+      - name: Start `upterm` Session
+        if: ${{ inputs.debug && failure() }}
+        uses: ./.github/actions/local-debug
 
-          expect -c '
-          log_user 0
-          spawn upterm host --accept -- bash
-          expect {
-            -re "(yes/no)" { send "yes\r" }
-          }
-          log_user 1
-          interact
-          '
-
-          upterm session current
-
-          while pgrep upterm > /dev/null; do
-              sleep 5
-          done
-
-          if [[ "${{ steps.push-artifacts.outcome == 'failure' }}" == 'true' ]]; then
-              exit 500
-          fi
-
-#      - id: release-artifacts
-#        name: Release
-#        uses: softprops/action-gh-release@v2
-#        with:
-#          make_latest: true
-#          fail_on_unmatched_files: true
-#          tag_name: ${{ inputs.release-tag || github.ref_name }}
-#          files: |
-#            ${{ github.workspace }}/artifacts/*
-#
-#      - name: Collect Job Logs
-#        uses: ./.github/actions/after-job
-#        if: always()
+      - id: release-artifacts
+        name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          make_latest: true
+          fail_on_unmatched_files: true
+          tag_name: ${{ inputs.release-tag }}
+          files: |
+            ${{ github.workspace }}/artifacts/*

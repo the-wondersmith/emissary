@@ -58,19 +58,10 @@ runs:
           | xargs curl -fsSL \
           | tar  --strip-components=1 -C /usr -xzf -
 
-          if [[ ! -z "${GITHUB_TOKEN:-}" ]]; then
+          if [[ -n "${GITHUB_TOKEN:-}" ]]; then
             echo '${{ github.token }}' | gh auth login --with-token
           fi
         fi
-
-        # install upterm for debugging if necessary
-        curl -fsSL -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" \
-        https://api.github.com/repos/owenthereal/upterm/releases/latest \
-        | jq -r '.assets | map(select(.name | test("^upterm_linux_\(env.ARCH)[.]deb$"; "i")) | .browser_download_url) | first' \
-        | xargs curl -fsSLo /tmp/upterm.deb \
-        && dpkg -i /tmp/upterm.deb \
-        && rm /tmp/upterm.deb \
-        && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -C "local-ci@github.emissary-ingress.emissary" -q -N ""
 
     - name: Install 'bsdtar' & 'helm-push'
       id: step-install-bsdtar
